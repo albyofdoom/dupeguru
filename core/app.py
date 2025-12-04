@@ -431,11 +431,17 @@ class DupeGuru(Broadcaster):
         location_path = first(p for p in self.directories if p in dupe.path.parents)
         dest_path = Path(destination)
         if dest_type in {DestType.RELATIVE, DestType.ABSOLUTE}:
-            # no filename, no windows drive letter
-            source_base = source_path.relative_to(source_path.anchor).parent
-            if dest_type == DestType.RELATIVE:
-                source_base = source_base.relative_to(location_path.relative_to(location_path.anchor))
-            dest_path = dest_path.joinpath(source_base)
+            if location_path is None:
+                # File is not under any scanned directory, fall back to direct mode
+                logging.warning(
+                    "File '%s' is not under any scanned directory. Using direct copy/move mode.", source_path
+                )
+            else:
+                # no filename, no windows drive letter
+                source_base = source_path.relative_to(source_path.anchor).parent
+                if dest_type == DestType.RELATIVE:
+                    source_base = source_base.relative_to(location_path.relative_to(location_path.anchor))
+                dest_path = dest_path.joinpath(source_base)
         if not dest_path.exists():
             dest_path.mkdir(parents=True)
         # Add filename to dest_path. For file move/copy, it's not required, but for folders, yes.

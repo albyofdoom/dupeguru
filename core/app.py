@@ -220,7 +220,8 @@ class DupeGuru(Broadcaster):
         if key == "dupe_count":
             return len(group)
         if key == "marked":
-            return len([dupe for dupe in group.dupes if self.results.is_marked(dupe)])
+            # Optimized: use sum() with generator instead of creating intermediate list
+            return sum(1 for dupe in group.dupes if self.results.is_marked(dupe))
         return cmp_value(group.ref, key)
 
     def _do_delete(self, j, link_deleted, use_hardlinks, direct_deletion):

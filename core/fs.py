@@ -49,8 +49,8 @@ NOT_SET = object()
 
 # The goal here is to not run out of memory on really big files. However, the chunk
 # size has to be large enough so that the python loop isn't too costly in terms of
-# CPU.
-CHUNK_SIZE = 1024 * 1024  # 1 MiB
+# CPU. Larger chunk size (4 MiB) is optimal for modern SSDs.
+CHUNK_SIZE = 4 * 1024 * 1024  # 4 MiB
 
 # Minimum size below which partial hashing is not used
 MIN_FILE_SIZE = 3 * CHUNK_SIZE  # 3MiB, because we take 3 samples
@@ -76,11 +76,13 @@ class FSError(Exception):
 
 class AlreadyExistsError(FSError):
     "The directory or file name we're trying to add already exists"
+
     cls_message = "'{name}' already exists in '{parent}'"
 
 
 class InvalidPath(FSError):
     "The path of self is invalid, and cannot be worked with."
+
     cls_message = "'{name}' is invalid."
 
 
@@ -103,6 +105,7 @@ class FilesDB:
 
     create_table_query = """CREATE TABLE IF NOT EXISTS files (path TEXT PRIMARY KEY, size INTEGER, mtime_ns INTEGER,
         entry_dt DATETIME, digest BLOB, digest_partial BLOB, digest_samples BLOB)"""
+    create_index_query = "CREATE INDEX IF NOT EXISTS idx_path_size_mtime ON files(path, size, mtime_ns)"
     drop_table_query = "DROP TABLE IF EXISTS files;"
     select_query = "SELECT {key} FROM files WHERE path=:path AND size=:size and mtime_ns=:mtime_ns"
     select_query_ignore_mtime = "SELECT {key} FROM files WHERE path=:path AND size=:size"
@@ -124,6 +127,11 @@ class FilesDB:
         else:
             self.conn = sqlite3.connect(path, check_same_thread=False)
         self.lock = Lock()
+        # Performance optimizations
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA temp_store=MEMORY")
+        self.conn.execute("PRAGMA cache_size=-64000")  # 64MB cache
         self._check_upgrade()
 
     def _check_upgrade(self) -> None:
@@ -143,6 +151,7 @@ class FilesDB:
                     {"version": self.schema_version, "description": self.schema_version_description},
                 )
             conn.execute(self.create_table_query)
+            conn.execute(self.create_index_query)
 
     def clear(self) -> None:
         with self.lock, self.conn as conn:
@@ -240,10 +249,7 @@ class File:
 
         with self.path.open("rb") as fp:
             file_hash = hasher()
-            # The goal here is to not run out of memory on really big files. However, the chunk
-            # size has to be large enough so that the python loop isn't too costly in terms of
-            # CPU.
-            CHUNK_SIZE = 1024 * 1024  # 1 mb
+            # Use the module-level CHUNK_SIZE constant
             filedata = fp.read(CHUNK_SIZE)
             while filedata:
                 file_hash.update(filedata)

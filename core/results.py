@@ -126,9 +126,10 @@ class Results(Markable):
             total_count = self.__total_count
             total_size = self.__total_size
         else:
-            mark_count = len([dupe for dupe in self.__filtered_dupes if self.is_marked(dupe)])
+            # Optimized: use sum() with generator instead of creating intermediate lists
+            mark_count = sum(1 for dupe in self.__filtered_dupes if self.is_marked(dupe))
             marked_size = sum(dupe.size for dupe in self.__filtered_dupes if self.is_marked(dupe))
-            total_count = len([dupe for dupe in self.__filtered_dupes if self.is_markable(dupe)])
+            total_count = sum(1 for dupe in self.__filtered_dupes if self.is_markable(dupe))
             total_size = sum(dupe.size for dupe in self.__filtered_dupes if self.is_markable(dupe))
         if self.mark_inverted:
             marked_size = self.__total_size - marked_size

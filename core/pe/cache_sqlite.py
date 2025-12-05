@@ -102,6 +102,11 @@ class SqliteCache:
     def _create_con(self, second_try=False):
         try:
             self.con = sqlite.connect(self.dbname, isolation_level=None)
+            # Performance optimizations
+            self.con.execute("PRAGMA journal_mode=WAL")
+            self.con.execute("PRAGMA synchronous=NORMAL")
+            self.con.execute("PRAGMA temp_store=MEMORY")
+            self.con.execute("PRAGMA cache_size=-64000")  # 64MB cache
             self._check_upgrade()
         except sqlite.DatabaseError as e:  # corrupted db
             if second_try:

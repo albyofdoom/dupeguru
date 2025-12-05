@@ -19,8 +19,8 @@ More details on setting up python for compiling packages on windows can be found
 To build with a different python version 3.7 vs 3.8 or 32 bit vs 64 bit specify that version instead of -3.8 to the `py` command below.  If you want to build additional versions while keeping all virtual environments setup use a different location for each virtual environment.
 
     $ cd <dupeGuru directory>
-    $ py -3.8 -m venv .\env
-    $ .\env\Scripts\activate
+    $ python -m venv .\venv
+    $ .\venv\Scripts\activate
     $ pip install -r requirements.txt
     $ python build.py
     $ python run.py
